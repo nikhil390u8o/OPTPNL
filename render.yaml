@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: tg-account-store
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --worker-class eventlet --workers 1 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASS
+        sync: false
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: FAMPAY_API_URL
+        sync: false
+      - key: FAMPAY_API_KEY
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
