@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}OTP — TG Store{% endblock %}
+{% block body %}
+<div class="container page">
+  <div style="max-width:480px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="label">// LOGIN ACCOUNT</div>
+      <h1>Telegram Login 🔐</h1>
+      <p class="muted" style="margin-top:6px">Steps follow karo account access karne ke liye</p>
+    </div>
+
+    <!-- Phone Card -->
+    <div class="card" style="margin-bottom:14px;border-color:rgba(0,245,160,.2)">
+      <div class="label">PHONE NUMBER</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.2rem;font-weight:700;color:var(--green);margin-bottom:10px;letter-spacing:2px">
+        {{ order[1] }}
+      </div>
+      <button onclick="copyPhone()" class="btn btn-outline" style="font-size:.75rem;padding:7px 14px">📋 Copy Number</button>
+    </div>
+
+    <!-- Steps Card -->
+    <div class="card-sm" style="margin-bottom:14px;font-size:.78rem;color:var(--muted);line-height:1.8">
+      <b style="color:var(--text)">Step 1:</b> Upar number copy karo<br/>
+      <b style="color:var(--text)">Step 2:</b> Telegram app → Login/Switch Account<br/>
+      <b style="color:var(--text)">Step 3:</b> Yeh phone number daalo → Send Code<br/>
+      <b style="color:var(--text)">Step 4:</b> OTP aayega us account ke Telegram pe<br/>
+      <b style="color:var(--text)">Step 5:</b> Neeche OTP enter karo ⬇️
+    </div>
+
+    <!-- OTP Input -->
+    <div class="card" id="otp-section">
+      <div class="label">ENTER OTP</div>
+      <h2>OTP Enter Karo</h2>
+      <input id="otp-input" type="number" placeholder="12345" maxlength="5"
+             style="font-size:1.5rem;text-align:center;letter-spacing:8px;font-family:'Space Mono',monospace"/>
+      <button class="btn btn-green btn-full" onclick="submitOTP()" id="otp-btn">Verify OTP →</button>
+      <div class="msg" id="otp-msg"></div>
+    </div>
+
+    <!-- 2FA Input (hidden) -->
+    <div class="card" id="twofa-section" style="display:none">
+      <div class="label">2FA PASSWORD</div>
+      <h2>🔒 2FA Password</h2>
+      <p class="muted" style="margin-bottom:12px;font-size:.78rem">Is account pe 2-step verification hai. Password daalo:</p>
+      <input id="twofa-input" type="password" placeholder="Your 2FA password"/>
+      <button class="btn btn-green btn-full" onclick="submit2FA()" id="twofa-btn">Submit Password →</button>
+      <div class="msg" id="twofa-msg"></div>
+    </div>
+
+    <!-- Success (hidden) -->
+    <div class="card" id="success-section" style="display:none;text-align:center;border-color:rgba(0,245,160,.3)">
+      <div style="font-size:2.5rem;margin-bottom:12px">🎉</div>
+      <div class="label">SUCCESS</div>
+      <h2 style="color:var(--green)">Account Login Ho Gaya!</h2>
+      <p class="muted" style="font-size:.78rem;margin:10px 0">Ab tum is account se Telegram use kar sakte ho</p>
+      <a href="/buy" class="btn btn-green btn-full" style="margin-top:8px">Buy Another Account</a>
+    </div>
+
+    <div style="margin-top:14px;text-align:center">
+      <a href="/buy" class="btn btn-outline" style="font-size:.78rem;padding:8px 16px">← Back to Buy</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+const phone   = "{{ order[1] }}";
+const orderId = {{ order[0] }};
+
+function copyPhone(){
+  navigator.clipboard.writeText(phone).then(()=>{
+    const btn=document.querySelector('.btn-outline');
+    btn.textContent='✅ Copied!';
+    setTimeout(()=>btn.textContent='📋 Copy Number',2000);
+  });
+}
+
+async function submitOTP(){
+  const code=document.getElementById('otp-input').value.trim();
+  if(!code||code.length<5){showMsg('otp-msg','error','5 digit OTP daalo!');return;}
+  const btn=document.getElementById('otp-btn');
+  btn.disabled=true;btn.textContent='Verifying...';
+  try{
+    const r=await fetch('/api/otp/submit',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({order_id:orderId,code:code})
+    });
+    const d=await r.json();
+    if(d.success){
+      if(d.needs_2fa){
+        document.getElementById('otp-section').style.display='none';
+        document.getElementById('twofa-section').style.display='block';
+      } else if(d.done){
+        document.getElementById('otp-section').style.display='none';
+        document.getElementById('success-section').style.display='block';
+      }
+    } else {
+      showMsg('otp-msg','error','❌ '+(d.error||'OTP galat hai'));
+    }
+  }catch(e){showMsg('otp-msg','error','❌ Server error');}
+  btn.disabled=false;btn.textContent='Verify OTP →';
+}
+
+async function submit2FA(){
+  const pwd=document.getElementById('twofa-input').value.trim();
+  if(!pwd){showMsg('twofa-msg','error','Password daalo!');return;}
+  const btn=document.getElementById('twofa-btn');
+  btn.disabled=true;btn.textContent='Checking...';
+  try{
+    const r=await fetch('/api/otp/submit2fa',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({order_id:orderId,password:pwd})
+    });
+    const d=await r.json();
+    if(d.success&&d.done){
+      document.getElementById('twofa-section').style.display='none';
+      document.getElementById('success-section').style.display='block';
+    } else {
+      showMsg('twofa-msg','error','❌ '+(d.error||'Wrong password'));
+    }
+  }catch(e){showMsg('twofa-msg','error','❌ Server error');}
+  btn.disabled=false;btn.textContent='Submit Password →';
+}
+
+function showMsg(id,type,msg){
+  const el=document.getElementById(id);
+  el.className='msg '+type+' show';
+  el.textContent=msg;
+}
+
+// Auto focus OTP input
+document.getElementById('otp-input').focus();
+document.getElementById('otp-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter')submitOTP();
+});
+{% endblock %}
