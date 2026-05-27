@@ -1,0 +1,10 @@
+flask
+flask-socketio
+psycopg2-binary
+bcrypt
+pyrogram
+tgcrypto
+python-dotenv
+requests
+gunicorn
+eventlet
