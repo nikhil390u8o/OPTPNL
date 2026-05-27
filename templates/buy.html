@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Buy Account — TG Store{% endblock %}
+{% block body %}
+<div class="container page">
+  <div style="margin-bottom:28px">
+    <div class="label">// BUY ACCOUNT</div>
+    <h1>Select Country 🌍</h1>
+    <p class="muted" style="margin-top:6px">Country select karo → Account lo → OTP se login karo</p>
+  </div>
+
+  <!-- Balance bar -->
+  <div class="card-sm" style="margin-bottom:24px;border-color:rgba(0,245,160,.15);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="label" style="margin-bottom:2px">YOUR BALANCE</div>
+      <div style="font-size:1.3rem;font-weight:800;color:var(--green);font-family:'Space Mono',monospace">₹{{ "%.2f"|format(user[2]|float) }}</div>
+    </div>
+    <a href="/dashboard" class="btn btn-outline" style="font-size:.8rem;padding:8px 16px">+ Add Balance</a>
+  </div>
+
+  {% if countries %}
+  <div class="grid-3" id="country-grid">
+    {% for country, count, min_price in countries %}
+    <div class="card-sm country-card" onclick="loadAccounts('{{ country }}')"
+         style="cursor:pointer;transition:border-color .2s,transform .15s"
+         onmouseover="this.style.borderColor='rgba(0,245,160,.4)';this.style.transform='translateY(-2px)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.transform='none'">
+      <div style="font-size:1.5rem;margin-bottom:8px">🌐</div>
+      <div style="font-weight:700;font-size:1rem;margin-bottom:4px">{{ country }}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <span class="badge badge-green">{{ count }} available</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--green)">from ₹{{ min_price|int }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center;padding:48px">
+    <div style="font-size:2.5rem;margin-bottom:12px">📭</div>
+    <div style="color:var(--muted)">Koi account available nahi hai abhi.</div>
+  </div>
+  {% endif %}
+
+  <!-- Account list modal -->
+  <div id="acc-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;padding:20px">
+    <div class="card" style="width:100%;max-width:500px;max-height:80vh;overflow-y:auto;position:relative">
+      <button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+      <div class="label">// AVAILABLE ACCOUNTS</div>
+      <h2 id="modal-country">Country</h2>
+      <div id="acc-list"></div>
+    </div>
+  </div>
+
+  <!-- Confirm purchase modal -->
+  <div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:300;align-items:center;justify-content:center;padding:20px">
+    <div class="card" style="width:100%;max-width:400px">
+      <div class="label">// CONFIRM PURCHASE</div>
+      <h2>Account kharidna hai? 🛒</h2>
+      <div class="card-sm" style="margin:16px 0;border-color:rgba(0,245,160,.2)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span class="muted">Country</span><span id="c-country" style="font-weight:700"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+          <span class="muted">Price</span><span id="c-price" style="color:var(--green);font-weight:700;font-family:'Space Mono',monospace"></span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span class="muted">Your Balance</span><span id="c-balance" style="font-family:'Space Mono',monospace"></span>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-outline" onclick="closeConfirm()" style="flex:1">Cancel</button>
+        <button class="btn btn-green" onclick="confirmPurchase()" style="flex:1" id="buy-btn">Buy Now →</button>
+      </div>
+      <div class="msg" id="conf-msg"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+let selectedAccId=null, selectedPrice=0, selectedCountry='';
+const userBal={{ user[2]|float }};
+
+async function loadAccounts(country){
+  selectedCountry=country;
+  document.getElementById('modal-country').textContent=country+' Accounts';
+  document.getElementById('acc-list').innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Loading...</div>';
+  document.getElementById('acc-modal').style.display='flex';
+  const r=await fetch('/api/accounts/'+encodeURIComponent(country));
+  const d=await r.json();
+  if(!d.accounts||!d.accounts.length){
+    document.getElementById('acc-list').innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Koi account nahi mila</div>';
+    return;
+  }
+  document.getElementById('acc-list').innerHTML=d.accounts.map(a=>`
+    <div class="card-sm" style="margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:.85rem;color:var(--text)">${a.phone}</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:2px">${a.country}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-family:'Space Mono',monospace;color:var(--green);font-weight:700">₹${a.price}</span>
+        <button class="btn btn-green" style="padding:7px 14px;font-size:.78rem" onclick="openConfirm(${a.id},${a.price},'${a.country}')">Buy</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function closeModal(){document.getElementById('acc-modal').style.display='none';}
+function closeConfirm(){document.getElementById('confirm-modal').style.display='none';}
+
+function openConfirm(id,price,country){
+  selectedAccId=id; selectedPrice=price; selectedCountry=country;
+  document.getElementById('c-country').textContent=country;
+  document.getElementById('c-price').textContent='₹'+price;
+  document.getElementById('c-balance').textContent='₹'+userBal.toFixed(2);
+  document.getElementById('conf-msg').className='msg';
+  document.getElementById('confirm-modal').style.display='flex';
+}
+
+async function confirmPurchase(){
+  const btn=document.getElementById('buy-btn');
+  btn.disabled=true; btn.textContent='Processing...';
+  try{
+    const r=await fetch('/purchase/'+selectedAccId,{method:'POST',headers:{'Content-Type':'application/json'}});
+    const d=await r.json();
+    if(d.success){
+      window.location.href='/otp/'+d.order_id;
+    } else {
+      document.getElementById('conf-msg').className='msg error show';
+      document.getElementById('conf-msg').textContent='❌ '+d.error;
+    }
+  }catch(e){
+    document.getElementById('conf-msg').className='msg error show';
+    document.getElementById('conf-msg').textContent='❌ Server error';
+  }
+  btn.disabled=false; btn.textContent='Buy Now →';
+}
+
+// Close modals on outside click
+document.getElementById('acc-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('confirm-modal').addEventListener('click',function(e){if(e.target===this)closeConfirm();});
+{% endblock %}

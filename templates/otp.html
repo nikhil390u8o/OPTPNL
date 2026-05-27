@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}OTP — TG Store{% endblock %}
+{% block body %}
+<div class="container page">
+  <div style="max-width:500px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:32px">
+      <div class="label">// OTP LOGIN</div>
+      <h1>Account Login 🔐</h1>
+      <p class="muted" style="margin-top:8px">Neeche steps follow karo account access karne ke liye</p>
+    </div>
+
+    <!-- Phone number card -->
+    <div class="card" style="margin-bottom:16px;border-color:rgba(0,245,160,.2)">
+      <div class="label">PHONE NUMBER</div>
+      <div style="font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--green);margin-bottom:8px;letter-spacing:2px">
+        {{ order[1] }}
+      </div>
+      <button onclick="copyPhone()" class="btn btn-outline" style="font-size:.78rem;padding:7px 14px">📋 Copy Number</button>
+      <div style="margin-top:14px;font-size:.82rem;color:var(--muted);line-height:1.6">
+        <b style="color:var(--text)">Step 1:</b> Upar wala number copy karo<br/>
+        <b style="color:var(--text)">Step 2:</b> Telegram app kholo → <b>+ New Chat</b> → Yeh number paste karo<br/>
+        <b style="color:var(--text)">Step 3:</b> Telegram → Login → Phone number daalo → OTP request karo<br/>
+        <b style="color:var(--text)">Step 4:</b> OTP neeche automatically aayega ⬇️
+      </div>
+    </div>
+
+    <!-- OTP card -->
+    <div class="card" id="otp-card" style="border-color:rgba(0,245,160,.15);text-align:center">
+      {% if order[2] %}
+        <!-- OTP already received -->
+        <div style="font-size:2rem;margin-bottom:8px">✅</div>
+        <div class="label">YOUR OTP</div>
+        <div style="font-family:'Space Mono',monospace;font-size:2.5rem;font-weight:700;color:var(--green);letter-spacing:8px;margin:12px 0">
+          {{ order[2] }}
+        </div>
+        <button onclick="copyOTP('{{ order[2] }}')" class="btn btn-green" style="margin-top:8px">📋 Copy OTP</button>
+      {% else %}
+        <!-- Waiting for OTP -->
+        <div id="waiting-section">
+          <div style="font-size:2rem;margin-bottom:8px">⏳</div>
+          <div class="label">WAITING FOR OTP</div>
+          <div style="color:var(--muted);font-size:.85rem;margin:12px 0">
+            Telegram se OTP request karo — yahan automatically aayega
+          </div>
+          <div style="display:flex;justify-content:center;gap:4px;margin:16px 0" id="otp-dots">
+            <span style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 1s infinite"></span>
+            <span style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 1s .2s infinite"></span>
+            <span style="width:8px;height:8px;background:var(--green);border-radius:50%;animation:pulse 1s .4s infinite"></span>
+          </div>
+          <div style="font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted)">Listening... <span id="timer">5:00</span></div>
+        </div>
+        <div id="otp-section" style="display:none">
+          <div style="font-size:2rem;margin-bottom:8px">🎉</div>
+          <div class="label">YOUR OTP</div>
+          <div style="font-family:'Space Mono',monospace;font-size:2.5rem;font-weight:700;color:var(--green);letter-spacing:8px;margin:12px 0" id="otp-display">-----</div>
+          <button onclick="copyOTPDisplay()" class="btn btn-green" style="margin-top:8px">📋 Copy OTP</button>
+        </div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:16px;text-align:center">
+      <a href="/buy" class="btn btn-outline" style="font-size:.8rem;padding:8px 18px">← Buy Another</a>
+    </div>
+  </div>
+</div>
+<style>
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+</style>
+{% endblock %}
+{% block script %}
+const phone = "{{ order[1] }}";
+const orderId = {{ order[0] }};
+let otpReceived = {% if order[2] %}true{% else %}false{% endif %};
+
+// Copy phone
+function copyPhone(){
+  navigator.clipboard.writeText(phone).then(()=>{
+    const btn=document.querySelectorAll('.btn-outline')[1];
+    btn.textContent='✅ Copied!';
+    setTimeout(()=>btn.textContent='📋 Copy Number',2000);
+  });
+}
+
+// Copy OTP (static, already received)
+function copyOTP(otp){
+  navigator.clipboard.writeText(otp).then(()=>{
+    const btn=document.querySelector('.btn-green');
+    btn.textContent='✅ Copied!';
+    setTimeout(()=>btn.textContent='📋 Copy OTP',2000);
+  });
+}
+
+// Copy from display
+function copyOTPDisplay(){
+  const otp=document.getElementById('otp-display').textContent;
+  navigator.clipboard.writeText(otp).then(()=>{
+    const btn=event.target;
+    btn.textContent='✅ Copied!';
+    setTimeout(()=>btn.textContent='📋 Copy OTP',2000);
+  });
+}
+
+if(!otpReceived){
+  // SocketIO for real-time OTP
+  const socket=io();
+  socket.on('connect',()=>{
+    socket.emit('join_otp_room',{order_id:orderId});
+  });
+  socket.on('otp_received',data=>{
+    showOTP(data.otp);
+  });
+
+  // Also poll every 5 seconds as backup
+  const poller=setInterval(async()=>{
+    const r=await fetch('/api/otp/'+orderId);
+    const d=await r.json();
+    if(d.otp){showOTP(d.otp);clearInterval(poller);}
+  },5000);
+
+  // Timer countdown
+  let secs=300;
+  const timerEl=document.getElementById('timer');
+  const timerInterval=setInterval(()=>{
+    secs--;
+    const m=Math.floor(secs/60), s=secs%60;
+    timerEl.textContent=m+':'+(s<10?'0':'')+s;
+    if(secs<=0){clearInterval(timerInterval);timerEl.textContent='Expired';}
+  },1000);
+}
+
+function showOTP(otp){
+  document.getElementById('waiting-section').style.display='none';
+  document.getElementById('otp-section').style.display='block';
+  document.getElementById('otp-display').textContent=otp;
+  otpReceived=true;
+}
+{% endblock %}

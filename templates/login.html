@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Login — TG Store{% endblock %}
+{% block body %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:400px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--green);letter-spacing:3px;margin-bottom:12px">// TG ACCOUNT STORE</div>
+      <h1 style="font-size:2rem">Welcome Back 👋</h1>
+      <p class="muted" style="margin-top:8px">Login to buy Telegram accounts</p>
+    </div>
+    <div class="card">
+      <div class="label">USERNAME</div>
+      <input id="username" type="text" placeholder="your_username" autocomplete="off"/>
+      <div class="label">PASSWORD</div>
+      <input id="password" type="password" placeholder="••••••••"/>
+      <button class="btn btn-green btn-full" onclick="doLogin()">Login →</button>
+      <div class="msg" id="msg"></div>
+      <hr class="divider"/>
+      <div style="text-align:center;font-size:.82rem;color:var(--muted)">
+        Account nahi hai? <a href="/register" style="color:var(--green);text-decoration:none">Register karo</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+async function doLogin(){
+  const u=document.getElementById('username').value.trim();
+  const p=document.getElementById('password').value.trim();
+  const msg=document.getElementById('msg');
+  if(!u||!p){showMsg('error','Username aur password dono do!');return;}
+  const btn=document.querySelector('.btn-green');
+  btn.disabled=true;btn.textContent='Logging in...';
+  try{
+    const r=await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();
+    if(d.success){window.location.href=d.is_admin?'/admin':'/dashboard';}
+    else showMsg('error','❌ '+d.error);
+  }catch(e){showMsg('error','❌ Server error');}
+  btn.disabled=false;btn.textContent='Login →';
+}
+function showMsg(t,m){const el=document.getElementById('msg');el.className='msg '+t+' show';el.textContent=m;}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+{% endblock %}

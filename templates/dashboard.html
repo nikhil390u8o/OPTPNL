@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — TG Store{% endblock %}
+{% block body %}
+<div class="container page">
+  <!-- Stats -->
+  <div style="margin-bottom:28px">
+    <div class="label">// DASHBOARD</div>
+    <h1>Welcome, @{{ session.username }} 👋</h1>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:28px">
+    <div class="card-sm" style="border-color:rgba(0,245,160,.2)">
+      <div class="label">BALANCE</div>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--green);font-family:'Space Mono',monospace" id="bal-display">₹{{ "%.2f"|format(user[2]|float) }}</div>
+    </div>
+    <div class="card-sm">
+      <div class="label">TOTAL DEPOSITED</div>
+      <div style="font-size:1.4rem;font-weight:800;font-family:'Space Mono',monospace">₹{{ "%.2f"|format(user[3]|float) }}</div>
+    </div>
+    <div class="card-sm">
+      <div class="label">TOTAL SPENT</div>
+      <div style="font-size:1.4rem;font-weight:800;font-family:'Space Mono',monospace">₹{{ "%.2f"|format(user[4]|float) }}</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:28px">
+    <a href="/buy" class="btn btn-green" style="padding:14px;font-size:1rem;text-align:center">🛒 Buy Account</a>
+    <button class="btn btn-outline" onclick="openDeposit()" style="padding:14px;font-size:1rem">💰 Add Balance</button>
+  </div>
+
+  <!-- Deposit Modal -->
+  <div id="deposit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center;padding:20px">
+    <div class="card" style="width:100%;max-width:440px;position:relative">
+      <button onclick="closeDeposit()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer">✕</button>
+      <div class="label">// ADD BALANCE</div>
+      <h2>Deposit via UPI</h2>
+
+      <!-- Step 1: Amount -->
+      <div id="dep-step1">
+        <div class="label">AMOUNT (₹)</div>
+        <input id="dep-amount" type="number" placeholder="500" min="1"/>
+        <button class="btn btn-green btn-full" onclick="showQR()">Generate QR →</button>
+      </div>
+
+      <!-- Step 2: QR + Payment type -->
+      <div id="dep-step2" style="display:none">
+        <div style="text-align:center;margin-bottom:16px">
+          <img id="qr-img" src="" style="width:200px;height:200px;border-radius:12px;border:2px solid var(--border)"/>
+          <div style="margin-top:10px;font-family:'Space Mono',monospace;font-size:.8rem;color:var(--muted)">UPI ID: <span style="color:var(--text)" id="upi-display"></span></div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:4px">Amount: <span style="color:var(--green);font-weight:700" id="amt-display"></span></div>
+        </div>
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:14px;text-align:center">
+          ɪғ ᴜʀ ᴜsɪɴɢ ғᴀᴍᴘᴀʏ → TXN ID bhejo<br/>
+          ɪғ ᴜʀ ᴜsɪɴɢ GPay/Paytm → 12 digit UTR bhejo
+        </p>
+        <div style="display:flex;gap:10px;margin-bottom:14px">
+          <button class="btn btn-outline" id="btn-fampay" onclick="selectType('fampay')" style="flex:1">💜 FamPay</button>
+          <button class="btn btn-outline" id="btn-other" onclick="selectType('other')" style="flex:1">📱 Other UPI</button>
+        </div>
+        <div id="dep-step2b" style="display:none">
+          <div class="label" id="id-label">UTR / TXN ID</div>
+          <input id="dep-utr" type="text" placeholder="Enter ID"/>
+          <button class="btn btn-green btn-full" onclick="verifyDeposit()">Verify Payment ✓</button>
+        </div>
+      </div>
+
+      <div class="msg" id="dep-msg"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+const UPI_ID = "nikhil-bby@fam"; // apna UPI ID yahan
+let depAmount=0, depType='';
+
+function openDeposit(){
+  document.getElementById('deposit-modal').style.display='flex';
+  document.getElementById('dep-step1').style.display='block';
+  document.getElementById('dep-step2').style.display='none';
+  document.getElementById('dep-step2b').style.display='none';
+  document.getElementById('dep-msg').className='msg';
+}
+function closeDeposit(){document.getElementById('deposit-modal').style.display='none';}
+
+function showQR(){
+  const amt=parseFloat(document.getElementById('dep-amount').value);
+  if(!amt||amt<1){showDepMsg('error','Valid amount do!');return;}
+  depAmount=amt;
+  const ref='REF'+Math.floor(Math.random()*9000+1000);
+  const upiLink=`upi://pay?pa=${UPI_ID}&pn=TGStore&tn=${ref}&am=${amt}`;
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}`;
+  document.getElementById('qr-img').src=qrUrl;
+  document.getElementById('upi-display').textContent=UPI_ID;
+  document.getElementById('amt-display').textContent='₹'+amt;
+  document.getElementById('dep-step1').style.display='none';
+  document.getElementById('dep-step2').style.display='block';
+}
+
+function selectType(type){
+  depType=type;
+  document.getElementById('btn-fampay').style.borderColor=type==='fampay'?'var(--green)':'var(--border)';
+  document.getElementById('btn-other').style.borderColor=type==='other'?'var(--green)':'var(--border)';
+  document.getElementById('id-label').textContent=type==='fampay'?'FAMPAY TXN ID':'12 DIGIT UTR';
+  document.getElementById('dep-utr').placeholder=type==='fampay'?'FMPIB5598320248':'614205359807';
+  document.getElementById('dep-step2b').style.display='block';
+}
+
+async function verifyDeposit(){
+  const utr=document.getElementById('dep-utr').value.trim().toUpperCase();
+  if(!utr){showDepMsg('error','ID do!');return;}
+  const btn=document.querySelector('#dep-step2b .btn-green');
+  btn.disabled=true;btn.textContent='Verifying...';
+  try{
+    const r=await fetch('/api/deposit/verify',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({utr,amount:depAmount,pay_type:depType})});
+    const d=await r.json();
+    if(d.verified){
+      showDepMsg('success','🎉 Payment verified! ₹'+depAmount+' added!');
+      document.getElementById('bal-display').textContent='₹'+d.balance.toFixed(2);
+      document.getElementById('nav-bal').textContent='₹'+d.balance.toFixed(2);
+      setTimeout(closeDeposit,2000);
+    } else showDepMsg('error','❌ '+(d.error||d.message||'Verify nahi hua'));
+  }catch(e){showDepMsg('error','❌ Server error');}
+  btn.disabled=false;btn.textContent='Verify Payment ✓';
+}
+function showDepMsg(t,m){const el=document.getElementById('dep-msg');el.className='msg '+t+' show';el.textContent=m;}
+// Close on outside click
+document.getElementById('deposit-modal').addEventListener('click',function(e){if(e.target===this)closeDeposit();});
+{% endblock %}

@@ -1,1 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Admin — TG Store{% endblock %}
+{% block body %}
+<div class="container page">
+  <div style="margin-bottom:28px">
+    <div class="label">// ADMIN PANEL</div>
+    <h1>Admin Dashboard ⚙️</h1>
+  </div>
 
+  <!-- Stats -->
+  <div class="grid-4" style="margin-bottom:28px">
+    <div class="card-sm" style="text-align:center;border-color:rgba(0,245,160,.2)">
+      <div class="label">USERS</div>
+      <div style="font-size:1.6rem;font-weight:800;color:var(--green);font-family:'Space Mono',monospace">{{ stats[0] if stats else 0 }}</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div class="label">ACCOUNTS</div>
+      <div style="font-size:1.6rem;font-weight:800;font-family:'Space Mono',monospace">{{ stats[1] if stats else 0 }}</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div class="label">SOLD</div>
+      <div style="font-size:1.6rem;font-weight:800;font-family:'Space Mono',monospace">{{ stats[2] if stats else 0 }}</div>
+    </div>
+    <div class="card-sm" style="text-align:center;border-color:rgba(0,245,160,.2)">
+      <div class="label">REVENUE</div>
+      <div style="font-size:1.6rem;font-weight:800;color:var(--green);font-family:'Space Mono',monospace">₹{{ stats[3]|int if stats else 0 }}</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:28px">
+    <!-- Add Account -->
+    <div class="card">
+      <div class="label">// ADD ACCOUNT</div>
+      <h2>New Account</h2>
+      <input id="a-phone" placeholder="+91XXXXXXXXXX (full number)"/>
+      <input id="a-country" placeholder="Country (e.g. India, USA)"/>
+      <input id="a-price" type="number" placeholder="Price (₹)"/>
+      <textarea id="a-session" placeholder="Pyrogram string session" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 14px;color:var(--text);font-family:'Space Mono',monospace;font-size:.75rem;outline:none;resize:vertical;min-height:80px;margin-bottom:14px"></textarea>
+      <button class="btn btn-green btn-full" onclick="addAccount()">Add Account →</button>
+      <div class="msg" id="acc-msg"></div>
+    </div>
+
+    <!-- Add Balance -->
+    <div class="card">
+      <div class="label">// ADD BALANCE</div>
+      <h2>Manual Balance</h2>
+      <input id="b-uid" type="number" placeholder="User ID"/>
+      <input id="b-amount" type="number" placeholder="Amount (₹)"/>
+      <button class="btn btn-green btn-full" onclick="addBalance()">Add Balance →</button>
+      <div class="msg" id="bal-msg"></div>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="card" style="margin-bottom:24px;overflow-x:auto">
+    <div class="label">// ALL USERS</div>
+    <h2>Users ({{ users|length }})</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">ID</th>
+          <th style="text-align:left;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">USERNAME</th>
+          <th style="text-align:right;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">BALANCE</th>
+          <th style="text-align:right;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">DEPOSITED</th>
+          <th style="text-align:right;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">SPENT</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr style="border-bottom:1px solid rgba(26,34,53,.5)">
+          <td style="padding:8px;font-family:'Space Mono',monospace;color:var(--muted)">{{ u[0] }}</td>
+          <td style="padding:8px;font-weight:600">@{{ u[1] }}</td>
+          <td style="padding:8px;text-align:right;color:var(--green);font-family:'Space Mono',monospace">₹{{ "%.2f"|format(u[2]|float) }}</td>
+          <td style="padding:8px;text-align:right;font-family:'Space Mono',monospace">₹{{ "%.2f"|format(u[3]|float) }}</td>
+          <td style="padding:8px;text-align:right;font-family:'Space Mono',monospace">₹{{ "%.2f"|format(u[4]|float) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Accounts Table -->
+  <div class="card" style="overflow-x:auto">
+    <div class="label">// ALL ACCOUNTS</div>
+    <h2>Accounts ({{ accounts|length }})</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">ID</th>
+          <th style="text-align:left;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">PHONE</th>
+          <th style="text-align:left;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">COUNTRY</th>
+          <th style="text-align:right;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">PRICE</th>
+          <th style="text-align:center;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">STATUS</th>
+          <th style="text-align:center;padding:8px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.7rem">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr style="border-bottom:1px solid rgba(26,34,53,.5)">
+          <td style="padding:8px;font-family:'Space Mono',monospace;color:var(--muted)">{{ a[0] }}</td>
+          <td style="padding:8px;font-family:'Space Mono',monospace">{{ a[1] }}</td>
+          <td style="padding:8px">{{ a[2] }}</td>
+          <td style="padding:8px;text-align:right;color:var(--green);font-family:'Space Mono',monospace">₹{{ a[3]|int }}</td>
+          <td style="padding:8px;text-align:center">
+            {% if a[4] %}
+              <span class="badge badge-red">SOLD</span>
+            {% else %}
+              <span class="badge badge-green">AVAILABLE</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px;text-align:center">
+            {% if not a[4] %}
+            <button class="btn btn-red" style="padding:4px 10px;font-size:.72rem" onclick="deleteAcc({{ a[0] }},this)">Delete</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+async function addAccount(){
+  const phone=document.getElementById('a-phone').value.trim();
+  const country=document.getElementById('a-country').value.trim();
+  const price=document.getElementById('a-price').value;
+  const sess=document.getElementById('a-session').value.trim();
+  if(!phone||!country||!price||!sess){showMsg('acc-msg','error','All fields required!');return;}
+  const btn=document.querySelectorAll('.btn-green')[0];
+  btn.disabled=true;btn.textContent='Adding...';
+  const r=await fetch('/admin/add-account',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone,country,price:parseFloat(price),string_session:sess})});
+  const d=await r.json();
+  if(d.success){
+    showMsg('acc-msg','success','✅ Account added! Reload karo.');
+    document.getElementById('a-phone').value='';
+    document.getElementById('a-country').value='';
+    document.getElementById('a-price').value='';
+    document.getElementById('a-session').value='';
+  } else showMsg('acc-msg','error','❌ '+d.error);
+  btn.disabled=false;btn.textContent='Add Account →';
+}
+
+async function addBalance(){
+  const uid=document.getElementById('b-uid').value;
+  const amt=document.getElementById('b-amount').value;
+  if(!uid||!amt){showMsg('bal-msg','error','User ID aur amount do!');return;}
+  const r=await fetch('/admin/add-balance',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user_id:parseInt(uid),amount:parseFloat(amt)})});
+  const d=await r.json();
+  if(d.success) showMsg('bal-msg','success','✅ Balance added!');
+  else showMsg('bal-msg','error','❌ '+d.error);
+}
+
+async function deleteAcc(id,btn){
+  if(!confirm('Account delete karna chahte ho?')) return;
+  btn.disabled=true;
+  const r=await fetch('/admin/delete-account',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({account_id:id})});
+  const d=await r.json();
+  if(d.success) btn.closest('tr').remove();
+  else{btn.disabled=false;alert('Error!');}
+}
+
+function showMsg(id,type,msg){
+  const el=document.getElementById(id);
+  el.className='msg '+type+' show';
+  el.textContent=msg;
+}
+{% endblock %}

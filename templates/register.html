@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Register — TG Store{% endblock %}
+{% block body %}
+<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:400px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--green);letter-spacing:3px;margin-bottom:12px">// CREATE ACCOUNT</div>
+      <h1 style="font-size:2rem">Join TG Store 🚀</h1>
+      <p class="muted" style="margin-top:8px">Register karo aur Telegram accounts kharido</p>
+    </div>
+    <div class="card">
+      <div class="label">USERNAME</div>
+      <input id="username" type="text" placeholder="your_username" autocomplete="off"/>
+      <div class="label">PASSWORD</div>
+      <input id="password" type="password" placeholder="••••••••"/>
+      <div class="label">CONFIRM PASSWORD</div>
+      <input id="confirm" type="password" placeholder="••••••••"/>
+      <button class="btn btn-green btn-full" onclick="doRegister()">Create Account →</button>
+      <div class="msg" id="msg"></div>
+      <hr class="divider"/>
+      <div style="text-align:center;font-size:.82rem;color:var(--muted)">
+        Already account hai? <a href="/" style="color:var(--green);text-decoration:none">Login karo</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+async function doRegister(){
+  const u=document.getElementById('username').value.trim();
+  const p=document.getElementById('password').value.trim();
+  const c=document.getElementById('confirm').value.trim();
+  if(!u||!p){showMsg('error','Sab fields baro!');return;}
+  if(p!==c){showMsg('error','Passwords match nahi kar rahe!');return;}
+  if(u.length<3){showMsg('error','Username kam se kam 3 characters ka ho!');return;}
+  const btn=document.querySelector('.btn-green');
+  btn.disabled=true;btn.textContent='Creating...';
+  try{
+    const r=await fetch('/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();
+    if(d.success){showMsg('success','✅ Account bana! Login kar rahe hain...');setTimeout(()=>window.location.href='/',1500);}
+    else showMsg('error','❌ '+d.error);
+  }catch(e){showMsg('error','❌ Server error');}
+  btn.disabled=false;btn.textContent='Create Account →';
+}
+function showMsg(t,m){const el=document.getElementById('msg');el.className='msg '+t+' show';el.textContent=m;}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doRegister();});
+{% endblock %}
