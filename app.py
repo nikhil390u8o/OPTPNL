@@ -28,7 +28,7 @@ tg_clients = {}
 _loop = asyncio.new_event_loop()
 threading.Thread(target=_loop.run_forever, daemon=True).start()
 
-def run_async(coro, timeout=30):
+def run_async(coro, timeout=60):
     future = asyncio.run_coroutine_threadsafe(coro, _loop)
     return future.result(timeout=timeout)
 
@@ -77,9 +77,14 @@ def get_user(uid):
 # ── Pyrogram ──────────────────────────────────────────────
 async def _send_code(phone):
     from pyrogram import Client
-    client = Client(f"adm_{phone.replace('+','')}", api_id=API_ID, api_hash=API_HASH, in_memory=True)
-    await client.connect()
-    sent = await client.send_code(phone)
+    client = Client(
+        f"adm_{phone.replace('+','')}",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        in_memory=True
+    )
+    await asyncio.wait_for(client.connect(), timeout=30)
+    sent = await asyncio.wait_for(client.send_code(phone), timeout=30)
     tg_clients[phone] = {"client": client, "hash": sent.phone_code_hash}
     return sent.phone_code_hash
 
