@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Admin — TG Store{% endblock %}
+{% block body %}
+<div class="container page">
+  <div style="margin-bottom:20px">
+    <div class="label">// ADMIN PANEL</div>
+    <h1>Admin ⚙️</h1>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid-4" style="margin-bottom:20px">
+    <div class="card-sm" style="text-align:center;border-color:rgba(0,245,160,.2)">
+      <div class="label">USERS</div>
+      <div style="font-size:1.5rem;font-weight:800;color:var(--green);font-family:'Space Mono',monospace">{{ stats[0] if stats else 0 }}</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div class="label">ACCOUNTS</div>
+      <div style="font-size:1.5rem;font-weight:800;font-family:'Space Mono',monospace">{{ stats[1] if stats else 0 }}</div>
+    </div>
+    <div class="card-sm" style="text-align:center">
+      <div class="label">SOLD</div>
+      <div style="font-size:1.5rem;font-weight:800;font-family:'Space Mono',monospace">{{ stats[2] if stats else 0 }}</div>
+    </div>
+    <div class="card-sm" style="text-align:center;border-color:rgba(0,245,160,.2)">
+      <div class="label">REVENUE</div>
+      <div style="font-size:1.5rem;font-weight:800;color:var(--green);font-family:'Space Mono',monospace">₹{{ stats[3]|int if stats else 0 }}</div>
+    </div>
+  </div>
+
+  <!-- Add Account -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="label">// ADD ACCOUNT</div>
+    <h2>New Account</h2>
+
+    <!-- Step 1: Basic Info -->
+    <div id="step1">
+      <input id="a-phone" placeholder="+91XXXXXXXXXX"/>
+      <input id="a-country" placeholder="Country (e.g. India)"/>
+      <input id="a-price" type="number" placeholder="Price (₹)"/>
+      <button class="btn btn-green btn-full" onclick="sendAdminOTP()">Send OTP →</button>
+      <div class="msg" id="step1-msg"></div>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="step2" style="display:none">
+      <div class="card-sm" style="margin-bottom:12px;border-color:rgba(0,245,160,.2)">
+        <div style="font-size:.75rem;color:var(--muted)">OTP sent to: <span style="color:var(--green)" id="otp-phone-display"></span></div>
+      </div>
+      <input id="a-otp" type="number" placeholder="Enter OTP (5 digits)" style="font-size:1.2rem;text-align:center;letter-spacing:6px"/>
+      <button class="btn btn-green btn-full" onclick="verifyAdminOTP()">Verify OTP →</button>
+      <button class="btn btn-outline btn-full" style="margin-top:8px" onclick="resetAdminForm()">← Back</button>
+      <div class="msg" id="step2-msg"></div>
+    </div>
+
+    <!-- Step 3: 2FA (if needed) -->
+    <div id="step3" style="display:none">
+      <div class="card-sm" style="margin-bottom:12px;border-color:rgba(255,85,85,.2)">
+        <div style="font-size:.78rem;color:var(--red)">🔒 2FA enabled — password daalo</div>
+      </div>
+      <input id="a-2fa" type="password" placeholder="2FA Password"/>
+      <button class="btn btn-green btn-full" onclick="verifyAdmin2FA()">Submit Password →</button>
+      <div class="msg" id="step3-msg"></div>
+    </div>
+
+    <!-- Step 4: Success -->
+    <div id="step4" style="display:none;text-align:center;padding:12px 0">
+      <div style="font-size:2rem">🎉</div>
+      <div style="color:var(--green);font-weight:700;margin-top:8px">Account Added Successfully!</div>
+      <button class="btn btn-outline btn-full" style="margin-top:12px" onclick="resetAdminForm()">Add Another</button>
+    </div>
+  </div>
+
+  <!-- Add Balance -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="label">// ADD BALANCE</div>
+    <h2>Manual Balance</h2>
+    <input id="b-uid" type="number" placeholder="User ID"/>
+    <input id="b-amount" type="number" placeholder="Amount (₹)"/>
+    <button class="btn btn-green btn-full" onclick="addBalance()">Add Balance →</button>
+    <div class="msg" id="bal-msg"></div>
+  </div>
+
+  <!-- Users -->
+  <div class="card" style="margin-bottom:16px;overflow-x:auto">
+    <div class="label">// USERS</div>
+    <h2>Users ({{ users|length }})</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">ID</th>
+          <th style="text-align:left;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">USER</th>
+          <th style="text-align:right;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">BAL</th>
+          <th style="text-align:right;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">DEP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr style="border-bottom:1px solid rgba(26,34,53,.5)">
+          <td style="padding:7px;font-family:'Space Mono',monospace;color:var(--muted)">{{ u[0] }}</td>
+          <td style="padding:7px;font-weight:600">@{{ u[1] }}</td>
+          <td style="padding:7px;text-align:right;color:var(--green);font-family:'Space Mono',monospace">₹{{ "%.0f"|format(u[2]|float) }}</td>
+          <td style="padding:7px;text-align:right;font-family:'Space Mono',monospace">₹{{ "%.0f"|format(u[3]|float) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Accounts -->
+  <div class="card" style="overflow-x:auto">
+    <div class="label">// ACCOUNTS</div>
+    <h2>Accounts ({{ accounts|length }})</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">PHONE</th>
+          <th style="text-align:left;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">COUNTRY</th>
+          <th style="text-align:right;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">PRICE</th>
+          <th style="text-align:center;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">STATUS</th>
+          <th style="text-align:center;padding:7px;color:var(--muted);font-family:'Space Mono',monospace;font-size:.62rem">DEL</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in accounts %}
+        <tr style="border-bottom:1px solid rgba(26,34,53,.5)">
+          <td style="padding:7px;font-family:'Space Mono',monospace;font-size:.7rem">{{ a[1] }}</td>
+          <td style="padding:7px">{{ a[2] }}</td>
+          <td style="padding:7px;text-align:right;color:var(--green);font-family:'Space Mono',monospace">₹{{ a[3]|int }}</td>
+          <td style="padding:7px;text-align:center">
+            {% if a[4] %}<span class="badge badge-red">SOLD</span>
+            {% else %}<span class="badge badge-green">FREE</span>{% endif %}
+          </td>
+          <td style="padding:7px;text-align:center">
+            {% if not a[4] %}
+            <button class="btn btn-red" style="padding:3px 8px;font-size:.65rem" onclick="delAcc({{ a[0] }},this)">✕</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block script %}
+let adminPhone='', adminHash='';
+
+async function sendAdminOTP(){
+  const phone  = document.getElementById('a-phone').value.trim();
+  const country= document.getElementById('a-country').value.trim();
+  const price  = document.getElementById('a-price').value;
+  if(!phone||!country||!price){showMsg('step1-msg','error','Sab fields bharo!');return;}
+  const btn=document.querySelector('#step1 .btn-green');
+  btn.disabled=true; btn.textContent='Sending OTP...';
+
+  // First add account to DB
+  const r1=await fetch('/admin/add-account',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone,country,price:parseFloat(price)})});
+  const d1=await r1.json();
+  if(!d1.success){showMsg('step1-msg','error','❌ '+d1.error);btn.disabled=false;btn.textContent='Send OTP →';return;}
+
+  // Then send OTP
+  const r2=await fetch('/admin/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone})});
+  const d2=await r2.json();
+  btn.disabled=false; btn.textContent='Send OTP →';
+
+  if(d2.success){
+    adminPhone=phone; adminHash=d2.hash;
+    document.getElementById('otp-phone-display').textContent=phone;
+    document.getElementById('step1').style.display='none';
+    document.getElementById('step2').style.display='block';
+  } else showMsg('step1-msg','error','❌ '+d2.error);
+}
+
+async function verifyAdminOTP(){
+  const code=document.getElementById('a-otp').value.trim();
+  if(!code){showMsg('step2-msg','error','OTP daalo!');return;}
+  const btn=document.querySelector('#step2 .btn-green');
+  btn.disabled=true; btn.textContent='Verifying...';
+
+  const r=await fetch('/admin/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:adminPhone,code,hash:adminHash})});
+  const d=await r.json();
+  btn.disabled=false; btn.textContent='Verify OTP →';
+
+  if(d.success){
+    if(d.needs_2fa){
+      document.getElementById('step2').style.display='none';
+      document.getElementById('step3').style.display='block';
+    } else if(d.done){
+      document.getElementById('step2').style.display='none';
+      document.getElementById('step4').style.display='block';
+    }
+  } else showMsg('step2-msg','error','❌ '+d.error);
+}
+
+async function verifyAdmin2FA(){
+  const pwd=document.getElementById('a-2fa').value.trim();
+  if(!pwd){showMsg('step3-msg','error','Password daalo!');return;}
+  const btn=document.querySelector('#step3 .btn-green');
+  btn.disabled=true; btn.textContent='Checking...';
+
+  const r=await fetch('/admin/verify-2fa',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({phone:adminPhone,password:pwd})});
+  const d=await r.json();
+  btn.disabled=false; btn.textContent='Submit Password →';
+
+  if(d.success&&d.done){
+    document.getElementById('step3').style.display='none';
+    document.getElementById('step4').style.display='block';
+  } else showMsg('step3-msg','error','❌ '+d.error);
+}
+
+function resetAdminForm(){
+  adminPhone=''; adminHash='';
+  ['step2','step3','step4'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('step1').style.display='block';
+  ['a-phone','a-country','a-price','a-otp','a-2fa'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+  ['step1-msg','step2-msg','step3-msg'].forEach(id=>{
+    document.getElementById(id).className='msg';
+  });
+}
+
+async function addBalance(){
+  const uid=document.getElementById('b-uid').value;
+  const amt=document.getElementById('b-amount').value;
+  if(!uid||!amt){showMsg('bal-msg','error','User ID aur amount do!');return;}
+  const r=await fetch('/admin/add-balance',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user_id:parseInt(uid),amount:parseFloat(amt)})});
+  const d=await r.json();
+  if(d.success) showMsg('bal-msg','success','✅ Balance added!');
+  else showMsg('bal-msg','error','❌ '+d.error);
+}
+
+async function delAcc(id,btn){
+  if(!confirm('Delete karna chahte ho?')) return;
+  btn.disabled=true;
+  const r=await fetch('/admin/delete-account',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({account_id:id})});
+  const d=await r.json();
+  if(d.success) btn.closest('tr').remove();
+  else btn.disabled=false;
+}
+
+function showMsg(id,type,msg){
+  const el=document.getElementById(id);
+  el.className='msg '+type+' show';
+  el.textContent=msg;
+}
+{% endblock %}
