@@ -124,6 +124,19 @@ def login_page():
     if "user_id" in session: return redirect("/dashboard")
     return render_template("login.html")
 
+@app.route("/admin/send-otp", methods=["POST"])
+@admin_required
+def admin_send_otp():
+    data  = request.get_json(silent=True)
+    phone = str(data.get("phone","")).strip()
+    if not phone: return jsonify({"success": False, "error": "Phone number do"}), 400
+    try:
+        hash_code = run_async(_send_code(phone))
+        return jsonify({"success": True, "hash": hash_code})
+    except Exception as e:
+        print(f"❌ send-otp error: {e}")  # ← yeh already hai
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route("/register", methods=["GET","POST"])
 def register_page():
     if request.method == "GET": return render_template("register.html")
