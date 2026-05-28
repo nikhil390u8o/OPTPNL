@@ -302,8 +302,10 @@ def admin_send_otp():
         hash_code = run_async(_send_code(phone))
         return jsonify({"success": True, "hash": hash_code})
     except Exception as e:
+        import traceback
+        err = traceback.format_exc()
+        print(f"SEND OTP ERROR: {err}")
         return jsonify({"success": False, "error": str(e)}), 500
-
 @app.route("/admin/verify-otp", methods=["POST"])
 @admin_required
 def admin_verify_otp():
