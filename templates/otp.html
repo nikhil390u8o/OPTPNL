@@ -182,7 +182,7 @@ const ti = setInterval(() => {
   secs--;
   const m = Math.floor(secs/60), s = secs%60;
   timerEl.textContent = m+':'+(s<10?'0':'')+s;
-  if(secs <= 60 && !otpReceived) {
+  if(secs <= 280 && !otpReceived) {
     // Show manual input after 4 minutes
     document.getElementById('manual-section').style.display = 'block';
   }
