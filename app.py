@@ -86,7 +86,8 @@ async def _send_code(phone):
 async def _sign_in(phone, code, phone_code_hash):
     from pyrogram import Client
     from pyrogram.errors import SessionPasswordNeeded
-    data   = tg_clients.get(f"usr_{phone}", {})
+    # Check both keys
+    data = tg_clients.get(phone) or tg_clients.get(f"usr_{phone}", {})
     client = data.get("client")
     # Client nahi mila memory me — recreate karo
     if not client:
@@ -358,14 +359,18 @@ def admin_verify_otp():
     if not all([phone, code, hash_code]):
         return jsonify({"success": False, "error": "Phone, OTP aur hash do"}), 400
     try:
-        result = run_async(_sign_in(phone, code, hash_code))
+        result = run_async(_sign_in(phone, code, hash_code), timeout=60)
         if result.get("needs_2fa"):
             return jsonify({"success": True, "needs_2fa": True})
-        # Session save in DB
         db_query("UPDATE accounts SET string_session=%s WHERE phone=%s", (result["session"], phone))
         return jsonify({"success": True, "needs_2fa": False, "done": True})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
+        error = str(e)
+        if "PHONE_CODE_EXPIRED" in error:
+            return jsonify({"success": False, "error": "OTP expire ho gaya! Dobara Send OTP karo."}), 400
+        if "PHONE_CODE_INVALID" in error:
+            return jsonify({"success": False, "error": "OTP galat hai! Check karke dobara daalo."}), 400
+        return jsonify({"success": False, "error": error}), 500
 
 @app.route("/admin/verify-2fa", methods=["POST"])
 @admin_required
